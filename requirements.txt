@@ -1,0 +1,19 @@
+chromadb
+google-generativeai
+pydantic>=2.0
+fastapi
+uvicorn
+pytest
+sentence-transformers
+httpx
+python-multipart
+streamlit
+Pillow
+openai-whisper
+soundfile
+numpy
+pypdf
+# Dev dependencies
+ruff
+mypy
+pytest
