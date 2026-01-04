@@ -96,7 +96,6 @@ def get_history(plant_name: str):
     if not plant_id:
         return []
     return database.get_recent_history(plant_id, limit=5)
-    return database.get_recent_history(plant_id, limit=5)
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_with_context(request: ChatRequest):

@@ -71,11 +71,10 @@ else:
 if 'user_location' not in st.session_state:
     st.session_state['user_location'] = get_ip_location()
 
-    st.session_state['user_location'] = get_ip_location()
+
 
 location = st.sidebar.text_input("📍 Your Location", value=st.session_state['user_location'])
 
-# --- Plant Selection Logic ---
 # --- Plant Selection Logic ---
 all_plants = []
 try:
@@ -201,7 +200,6 @@ if uploaded_file is not None:
                         annotated_bytes = Annotator.draw_boxes(uploaded_file.getvalue(), analysis_obj)
                         st.session_state['annotated_image'] = annotated_bytes
                     except Exception as e:
-                        print(f"Annotation error: {e}")
                         print(f"Annotation error: {e}")
                         st.session_state['annotated_image'] = uploaded_file.getvalue()
                     
