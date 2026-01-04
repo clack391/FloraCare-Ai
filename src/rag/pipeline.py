@@ -84,8 +84,16 @@ class RAGPipeline:
         if history:
             history_text = "\n".join(history)
 
+        previous_diagnosis = "None"
+        if history:
+            # history[0] is the most recent due to ORDER BY DESC in database.py
+            previous_diagnosis = history[0]
+
         prompt = f"""
         Act as a master botanist.
+        
+        ANCHOR CONTEXT (Previous Diagnosis):
+        {previous_diagnosis}
         
         Patient Plant Analysis:
         - Type: {analysis.plant_type}
@@ -108,6 +116,12 @@ class RAGPipeline:
         - Provide a direct, concise answer in "user_query_answer".
         - Base this answer on your diagnosis (e.g. "Yes, it is curable...").
         - If the query is unrelated, politely state that.
+
+        INSTRUCTIONS FOR STABILITY:
+        1. Review the 'ANCHOR CONTEXT'.
+        2. Compare current visual symptoms to this baseline.
+        3. CONSTRAINT: Do NOT change the diagnosis type (e.g. from 'Fungus' to 'Bacteria') unless visual evidence is overwhelming (>85% sure).
+        4. Focus on PROGRESSION (improving/worsening) rather than re-identifying the disease if it matches the anchor.
         
         Return the response strictly as JSON matching the Schema:
         {{
@@ -121,7 +135,7 @@ class RAGPipeline:
         
         response = self.reasoning_model.generate_content(
             prompt, 
-            generation_config={"response_mime_type": "application/json"}
+            generation_config={"response_mime_type": "application/json", "temperature": 0.0}
         )
         
         try:
