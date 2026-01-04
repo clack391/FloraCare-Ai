@@ -46,7 +46,8 @@ def health_check():
 async def diagnose_plant(
     file: UploadFile = File(...),
     location: str = Form("London,UK"),
-    plant_name: str = Form("My Plant")
+    plant_name: str = Form("My Plant"),
+    user_query: str = Form(None)
 ):
     try:
         # 1. Save File to Disk (Temp)
@@ -62,7 +63,7 @@ async def diagnose_plant(
         
         initial_state = {
             "image_path": temp_path,
-            "user_query": "",
+            "user_query": user_query if user_query else "",
             "location": location,
             "plant_name": plant_name,
             "plant_id": None,
@@ -147,3 +148,8 @@ def delete_history(plant_name: str):
 @app.get("/plants", response_model=List[str])
 def list_plants():
     return database.get_all_plants()
+
+@app.delete("/plants")
+def reset_database():
+    database.delete_all_plants()
+    return {"status": "all_data_wiped"}

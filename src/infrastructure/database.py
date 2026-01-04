@@ -75,9 +75,12 @@ class Database:
             row = cursor.fetchone()
             return row[0] if row else None
 
-    def update_plant_details(self, plant_id: str, new_name: str, species: str):
+    def update_plant_details(self, plant_id: str, species: str, new_name: Optional[str] = None):
         with self._get_conn() as conn:
-            conn.execute("UPDATE plants SET name = ?, species = ? WHERE id = ?", (new_name, species, plant_id))
+            if new_name:
+                conn.execute("UPDATE plants SET name = ?, species = ? WHERE id = ?", (new_name, species, plant_id))
+            else:
+                conn.execute("UPDATE plants SET species = ? WHERE id = ?", (species, plant_id))
             conn.commit()
 
     def log_diagnosis(self, plant_id: str, image_path: str, visual_diagnosis: Dict[str, Any], final_diagnosis: str) -> str:
@@ -123,4 +126,12 @@ class Database:
             )
             # Then delete diagnosis logs
             conn.execute("DELETE FROM diagnosis_logs WHERE plant_id = ?", (plant_id,))
+            conn.commit()
+
+    def delete_all_plants(self):
+        """Wipes the entire database."""
+        with self._get_conn() as conn:
+            conn.execute("DELETE FROM weather_snapshots")
+            conn.execute("DELETE FROM diagnosis_logs")
+            conn.execute("DELETE FROM plants")
             conn.commit()

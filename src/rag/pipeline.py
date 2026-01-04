@@ -102,13 +102,19 @@ class RAGPipeline:
         User Query: {user_query}
         
         Task: Provide a diagnosis. 
-        CRITICAL: Explicitly reference the Weather and History if they are relevant to the diagnosis (e.g. "High humidity confirms fungal risk").
+        CRITICAL: Explicitly reference the Weather and History if they are relevant to the diagnosis.
+        
+        IF USER QUERY EXISTS ("{user_query}"):
+        - Provide a direct, concise answer in "user_query_answer".
+        - Base this answer on your diagnosis (e.g. "Yes, it is curable...").
+        - If the query is unrelated, politely state that.
         
         Return the response strictly as JSON matching the Schema:
         {{
             "analysis": ... (pass through),
             "diagnosis": "str",
             "treatment_plan": ["str"],
+            "user_query_answer": "str or null",
             "relevant_knowledge": ["str"]
         }}
         """
@@ -141,8 +147,8 @@ class RAGPipeline:
                 # [FIX] Sync DB name with detected name so history lookup works
                 detected_name = analysis.plant_type
                 if detected_name and detected_name != "Unknown":
-                    # Update both name and species (they are usually the same in this simple logic)
-                    self.db.update_plant_details(state['plant_id'], detected_name, species=detected_name)
+                    # Update only species, keep the user's chosen name stable
+                    self.db.update_plant_details(state['plant_id'], species=detected_name)
             
             return {"final_report": report}
         except Exception as e:

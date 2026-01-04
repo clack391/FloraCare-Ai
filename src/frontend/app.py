@@ -131,6 +131,23 @@ if st.sidebar.button("Clear History 🗑️", type="primary"):
     except Exception as e:
         st.sidebar.error(f"Error: {e}")
 
+# --- Danger Zone ---
+with st.sidebar.expander("⚠️ Danger Zone"):
+    st.write("Delete all plants and history.")
+    if st.button("Confirm Factory Reset", type="primary"):
+        try:
+            res = httpx.delete(f"{API_URL}/plants")
+            if res.status_code == 200:
+                st.success("System Reset Complete")
+                # Clear entire session state
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.rerun()
+            else:
+                st.error("Reset Failed")
+        except Exception as e:
+             st.error(f"Error: {e}")
+
 # --- Main Page ---
 st.title("FloraCare AI 🌿")
 st.markdown("### Intelligent Plant Diagnosis System")
@@ -142,6 +159,12 @@ with col_v1:
     st.write("🎙️ **Voice Query**")
 with col_v2:
     voice_text = VoiceComponent.render()
+
+# Text Input for Targeted Query
+text_query = st.text_input("💬 Ask a specific question (e.g. 'Is this contagious?')", value="")
+
+# Combine Inputs (Text overrides Voice if both present, or concatenate? Let's prefer Text if typed, else Voice)
+final_query = text_query if text_query else voice_text
 
 # Image Input
 uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
@@ -160,7 +183,7 @@ if uploaded_file is not None:
                 data = {
                     "location": location,
                     "plant_name": plant_name,
-                    "user_query": voice_text
+                    "user_query": final_query
                 }
                 
                 # Call Backend
@@ -183,12 +206,10 @@ if uploaded_file is not None:
                         st.session_state['annotated_image'] = uploaded_file.getvalue()
                     
                     # --- UX Automation: Update Plant Name ---
-                    detected_name = report['analysis']['plant_type']
-                    if detected_name and detected_name != "Unknown":
-                        # Defer update to next run to avoid "session state modified after widget" error
-                        st.session_state['pending_plant_name'] = detected_name
-                        st.sidebar.success(f"Renamed to: {detected_name}")
-                        st.rerun()
+                    # [DISABLED] We no longer auto-rename to preserve history integrity
+                    # detected_name = report['analysis']['plant_type']
+                    # if detected_name and detected_name != "Unknown":
+                    #    pass
 
                 else:
                     st.error(f"Error {response.status_code}: {response.text}")
@@ -218,6 +239,10 @@ if 'diagnosis_result' in st.session_state and st.session_state.get('last_file') 
 
     with r_col2:
         st.subheader(f"Diagnosis: {report['diagnosis']}")
+        
+        # Direct Answer Section
+        if report.get('user_query_answer'):
+            st.info(f"**Answer to your question:** {report['user_query_answer']}")
         
         # Severity Metrics
         sev = report['analysis'].get('severity_score')

@@ -40,6 +40,7 @@ class DiagnosisReport(BaseModel):
     analysis: PlantImageAnalysis
     diagnosis: str = Field(..., description="The medical/botanical diagnosis")
     treatment_plan: List[str] = Field(..., description="Steps to cure/mitigate")
+    user_query_answer: Optional[str] = Field(None, description="Direct answer to the user's specific question")
     relevant_knowledge: List[str] = Field(..., description="Snippets from RAG used for reasoning")
     weather_context: Optional[WeatherData] = None
 
