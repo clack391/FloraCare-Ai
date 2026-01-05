@@ -50,7 +50,8 @@ class RAGPipeline:
         print("--- Node: Retrieve Knowledge ---")
         analysis: PlantImageAnalysis = state['analysis']
         query = f"{analysis.plant_type} with {', '.join(analysis.visual_symptoms)}"
-        context = self.kb.query(query, n_results=3)
+        # Optimized: Fetch 5 candidates to allow comparison between multiple sources
+        context = self.kb.query(query, n_results=5)
         return {"retrieved_context": context}
 
     def diagnose_node(self, state: DiagnosisState):
@@ -94,7 +95,7 @@ class RAGPipeline:
         Context Awareness:
         - Current Weather: {weather_text}
         
-        Relevant Knowledge Base:
+        Relevant Knowledge Base (Candidates):
         {context_text}
         
         {query_section}
@@ -103,6 +104,15 @@ class RAGPipeline:
         CRITICAL: Explicitly reference the Weather if relevant to the diagnosis.
         
         {query_instructions}
+        
+        INSTRUCTIONS FOR KNOWLEDGE BASE (Source Selection):
+        1. You have been provided with 5 candidate chunks from different sources.
+        2. COMPARE them. One source might be more accurate or relevant than another for this specific visual case.
+        3. If sources conflict (e.g. Source A says 'Rust', Source B says 'Blight'), prioritize the source whose description BEST matches the "Patient Plant Analysis" symptoms.
+        4. If a chunk is NOT relevant (discusses wrong plant/disease), IGNORE IT.
+        5. In "relevant_knowledge", cite ONLY the snippets that contributed to your final, best-judged diagnosis.
+        6. If all sources are irrelevant, leave "relevant_knowledge" empty and rely on visual analysis.
+
         
         Return the response strictly as JSON matching the Schema:
         {{

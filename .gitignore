@@ -3,4 +3,6 @@
 .pytest_cache
 .ruff_cache
 .venv
+test_images
+temp_uploads
 sample_knowledge.txt
