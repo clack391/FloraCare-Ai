@@ -34,6 +34,10 @@ def ingest_file(file_path: Union[str, Path]):
     # Simple chunking by paragraph for Phase 1
     chunks = [c.strip() for c in content.split("\n\n") if c.strip()]
     
+    if not chunks:
+        print(f"Skipping {path.name}: No indexable content found.")
+        return
+    
     ids = [str(uuid.uuid4()) for _ in chunks]
     metadatas = [{"source": path.name, "chunk_index": i} for i in range(len(chunks))]
     

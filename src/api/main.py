@@ -7,7 +7,6 @@ from typing import List
 
 from src.models.schemas import DiagnosisReport, ChatRequest, ChatResponse
 from src.rag.pipeline import RAGPipeline
-from src.infrastructure.database import Database
 
 # --- Lifecycle & App ---
 
@@ -25,8 +24,7 @@ app = FastAPI(title="FloraCare AI API", lifespan=lifespan)
 # In a real app we might use Dependency Injection, but for MVP this is fine.
 # We init pipeline per request or global? Pipeline loads heavy models 
 # (SentenceTransformer, GenAI). Global is better.
-pipeline_instance = None 
-database = Database()
+pipeline_instance = None
 
 def get_pipeline():
     global pipeline_instance
@@ -43,10 +41,10 @@ def health_check():
     return {"status": "ok", "service": "FloraCare AI"}
 
 @app.post("/diagnose", response_model=DiagnosisReport)
+@app.post("/diagnose", response_model=DiagnosisReport)
 async def diagnose_plant(
     file: UploadFile = File(...),
     location: str = Form("London,UK"),
-    plant_name: str = Form("My Plant"),
     user_query: str = Form(None)
 ):
     try:
@@ -65,12 +63,11 @@ async def diagnose_plant(
             "image_path": temp_path,
             "user_query": user_query if user_query else "",
             "location": location,
-            "plant_name": plant_name,
-            "plant_id": None,
+            # plant_name/id removed
             "analysis": None,
             "retrieved_context": [],
             "weather": None,
-            "history_summary": [],
+            # history_summary removed
             "final_report": None
         }
         
@@ -89,13 +86,6 @@ async def diagnose_plant(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/history/{plant_name}", response_model=List[str])
-def get_history(plant_name: str):
-    plant_id = database.get_plant_by_name(plant_name)
-    if not plant_id:
-        return []
-    return database.get_recent_history(plant_id, limit=5)
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_with_context(request: ChatRequest):
@@ -133,22 +123,3 @@ async def chat_with_context(request: ChatRequest):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.delete("/history/{plant_name}")
-def delete_history(plant_name: str):
-    plant_id = database.get_plant_by_name(plant_name)
-    if not plant_id:
-        # If plant doesn't exist, history is conceptually empty/deleted
-        return {"status": "deleted", "plant_name": plant_name}
-    
-    database.delete_plant_history(plant_id)
-    return {"status": "deleted", "plant_name": plant_name}
-
-@app.get("/plants", response_model=List[str])
-def list_plants():
-    return database.get_all_plants()
-
-@app.delete("/plants")
-def reset_database():
-    database.delete_all_plants()
-    return {"status": "all_data_wiped"}

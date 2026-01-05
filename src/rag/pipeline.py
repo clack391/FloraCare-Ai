@@ -7,19 +7,17 @@ from src.models.schemas import PlantImageAnalysis, DiagnosisReport, KnowledgeChu
 from src.llm.gemini_client import GeminiClient
 from src.vector_store.chroma_store import BotanicalKnowledgeBase
 from src.services.weather import WeatherService
-from src.infrastructure.database import Database
 
 # Define the state
 class DiagnosisState(TypedDict):
     image_path: str
     user_query: str
     location: str
-    plant_name: Optional[str]
-    plant_id: Optional[str]
+    # plant_name/id removed
     analysis: PlantImageAnalysis
     retrieved_context: List[KnowledgeChunk]
     weather: Optional[WeatherData]
-    history_summary: List[str]
+    # history_summary removed
     final_report: DiagnosisReport
 
 class RAGPipeline:
@@ -27,7 +25,6 @@ class RAGPipeline:
         self.gemini = GeminiClient()
         self.kb = BotanicalKnowledgeBase()
         self.weather_service = WeatherService()
-        self.db = Database()
         self.reasoning_model = genai.GenerativeModel("gemini-2.5-flash") 
 
     def analyze_node(self, state: DiagnosisState):
@@ -39,24 +36,15 @@ class RAGPipeline:
         return {"analysis": analysis}
 
     def fetch_context_node(self, state: DiagnosisState):
-        print("--- Node: Fetch Context (Weather & History) ---")
+        print("--- Node: Fetch Context (Weather Only) ---")
         location = state.get('location', 'London,UK')
-        plant_name = state.get('plant_name')
         
         # Fetch Weather
         weather = self.weather_service.get_current_weather(location)
         
-        # Fetch History
-        history = []
-        plant_id = None
-        if plant_name:
-            plant_id = self.db.get_plant_by_name(plant_name)
-            if not plant_id:
-                # Create if not exists for this MVP flow
-                plant_id = self.db.create_plant(plant_name, "Unknown")
-            history = self.db.get_recent_history(plant_id)
+        # History Removed
             
-        return {"weather": weather, "history_summary": history, "plant_id": plant_id}
+        return {"weather": weather}
 
     def retrieve_node(self, state: DiagnosisState):
         print("--- Node: Retrieve Knowledge ---")
@@ -70,7 +58,6 @@ class RAGPipeline:
         analysis = state['analysis']
         context = state['retrieved_context']
         weather = state.get('weather')
-        history = state.get('history_summary', [])
         user_query = state.get("user_query", "")
 
         context_text = "\n".join([f"- {c.content} (Source: {c.source})" for c in context])
@@ -80,20 +67,24 @@ class RAGPipeline:
             # [OPTIMIZATION] Passing only key metrics, not raw JSON
             weather_text = f"{weather.temperature}°C, {weather.humidity}% hum, {weather.condition}"
 
-        history_text = "No previous history."
-        if history:
-            history_text = "\n".join(history)
-
-        previous_diagnosis = "None"
-        if history:
-            # history[0] is the most recent due to ORDER BY DESC in database.py
-            previous_diagnosis = history[0]
+        if user_query and user_query.strip():
+            query_section = f"User Query: {user_query}"
+            query_instructions = f"""
+        IF USER QUERY EXISTS ("{user_query}"):
+        - Provide a direct, concise answer in "user_query_answer".
+        - Base this answer on your diagnosis (e.g. "Yes, it is curable...").
+        - If the query is unrelated, politely state that.
+            """
+        else:
+            query_section = "User Query: None"
+            query_instructions = """
+        NO USER QUERY PROVIDED:
+        - Set "user_query_answer" to null.
+        - Do NOT hallucinate a question.
+            """
 
         prompt = f"""
         Act as a master botanist.
-        
-        ANCHOR CONTEXT (Previous Diagnosis):
-        {previous_diagnosis}
         
         Patient Plant Analysis:
         - Type: {analysis.plant_type}
@@ -102,26 +93,16 @@ class RAGPipeline:
         
         Context Awareness:
         - Current Weather: {weather_text}
-        - Plant History: {history_text}
         
         Relevant Knowledge Base:
         {context_text}
         
-        User Query: {user_query}
+        {query_section}
         
         Task: Provide a diagnosis. 
-        CRITICAL: Explicitly reference the Weather and History if they are relevant to the diagnosis.
+        CRITICAL: Explicitly reference the Weather if relevant to the diagnosis.
         
-        IF USER QUERY EXISTS ("{user_query}"):
-        - Provide a direct, concise answer in "user_query_answer".
-        - Base this answer on your diagnosis (e.g. "Yes, it is curable...").
-        - If the query is unrelated, politely state that.
-
-        INSTRUCTIONS FOR STABILITY:
-        1. Review the 'ANCHOR CONTEXT'.
-        2. Compare current visual symptoms to this baseline.
-        3. CONSTRAINT: Do NOT change the diagnosis type (e.g. from 'Fungus' to 'Bacteria') unless visual evidence is overwhelming (>85% sure).
-        4. Focus on PROGRESSION (improving/worsening) rather than re-identifying the disease if it matches the anchor.
+        {query_instructions}
         
         Return the response strictly as JSON matching the Schema:
         {{
@@ -147,22 +128,7 @@ class RAGPipeline:
                 
             report = DiagnosisReport(**data)
             
-            # Save to DB
-            if state.get('plant_id'):
-                log_id = self.db.log_diagnosis(
-                    state['plant_id'], 
-                    state['image_path'], 
-                    analysis.model_dump(), 
-                    report.diagnosis
-                )
-                if weather:
-                    self.db.log_weather(log_id, weather.temperature, weather.humidity, weather.condition)
-                    
-                # [FIX] Sync DB name with detected name so history lookup works
-                detected_name = analysis.plant_type
-                if detected_name and detected_name != "Unknown":
-                    # Update only species, keep the user's chosen name stable
-                    self.db.update_plant_details(state['plant_id'], species=detected_name)
+            # DB Logging Removed
             
             return {"final_report": report}
         except Exception as e:

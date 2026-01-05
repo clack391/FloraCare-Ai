@@ -33,7 +33,7 @@ class DiagnosisRequest(BaseModel):
     image_path: str
     user_query: Optional[str] = None
     location: Optional[str] = "London,UK" # Default logic location
-    plant_name: Optional[str] = None # For history lookup
+
 
 class DiagnosisReport(BaseModel):
     """Final output to the user."""

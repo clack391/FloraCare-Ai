@@ -71,81 +71,10 @@ else:
 if 'user_location' not in st.session_state:
     st.session_state['user_location'] = get_ip_location()
 
-
-
 location = st.sidebar.text_input("📍 Your Location", value=st.session_state['user_location'])
 
-# --- Plant Selection Logic ---
-all_plants = []
-try:
-    resp = httpx.get(f"{API_URL}/plants")
-    if resp.status_code == 200:
-        all_plants = resp.json()
-except Exception as e:
-    st.sidebar.error(f"Could not load plants: {e}")
-
-# Verify pending name exists in list (for auto-rename)
-default_ix = 0
-if 'pending_plant_name' in st.session_state:
-    pending = st.session_state.pop('pending_plant_name')
-    if pending not in all_plants:
-        all_plants.insert(0, pending) # Prepend if new
-    try:
-        default_ix = all_plants.index(pending)
-    except ValueError:
-        default_ix = 0
-
-options = all_plants + ["➕ Add New Plant..."]
-selected_option = st.sidebar.selectbox("🏷️ Select Plant", options, index=default_ix)
-
-if selected_option == "➕ Add New Plant...":
-    plant_name = st.sidebar.text_input("Enter New Name", value="My New Plant")
-else:
-    plant_name = selected_option
-
 st.sidebar.markdown("---")
-st.sidebar.subheader("History")
-if st.sidebar.button("Refresh History"):
-    try:
-        res = httpx.get(f"{API_URL}/history/{plant_name}")
-        if res.status_code == 200:
-            history = res.json()
-            if not history:
-                 st.sidebar.info("No history found.")
-            for item in history:
-                st.sidebar.text(item)
-        else:
-            st.sidebar.error("Could not fetch history")
-    except Exception as e:
-        st.sidebar.error(f"Connection Error: {e}")
-
-if st.sidebar.button("Clear History 🗑️", type="primary"):
-    try:
-        res = httpx.delete(f"{API_URL}/history/{plant_name}")
-        if res.status_code == 200:
-            st.sidebar.success(f"History cleared for {plant_name}")
-            # Optional: Clear session state if it matches current plant?
-        else:
-            st.sidebar.error("Could not delete history")
-    except Exception as e:
-        st.sidebar.error(f"Error: {e}")
-
-# --- Danger Zone ---
-with st.sidebar.expander("⚠️ Danger Zone"):
-    st.write("Delete all plants and history.")
-    if st.button("Confirm Factory Reset", type="primary"):
-        try:
-            res = httpx.delete(f"{API_URL}/plants")
-            if res.status_code == 200:
-                st.success("System Reset Complete")
-                # Clear entire session state
-                for key in list(st.session_state.keys()):
-                    del st.session_state[key]
-                st.rerun()
-            else:
-                st.error("Reset Failed")
-        except Exception as e:
-             st.error(f"Error: {e}")
+st.sidebar.info("FloraCare AI is running in stateless mode. No data is stored.")
 
 # --- Main Page ---
 st.title("FloraCare AI 🌿")
@@ -181,7 +110,6 @@ if uploaded_file is not None:
                 files = {"file": (uploaded_file.name, uploaded_file, uploaded_file.type)}
                 data = {
                     "location": location,
-                    "plant_name": plant_name,
                     "user_query": final_query
                 }
                 
@@ -203,11 +131,6 @@ if uploaded_file is not None:
                         print(f"Annotation error: {e}")
                         st.session_state['annotated_image'] = uploaded_file.getvalue()
                     
-                    # --- UX Automation: Update Plant Name ---
-                    # [DISABLED] We no longer auto-rename to preserve history integrity
-                    # detected_name = report['analysis']['plant_type']
-                    # if detected_name and detected_name != "Unknown":
-                    #    pass
 
                 else:
                     st.error(f"Error {response.status_code}: {response.text}")
@@ -318,4 +241,3 @@ if 'diagnosis_result' in st.session_state and st.session_state.get('last_file') 
                          st.error(f"Error: {res.text}")
                 except Exception as e:
                     st.error(f"Chat Error: {e}")
-

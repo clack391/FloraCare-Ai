@@ -29,6 +29,9 @@ class BotanicalKnowledgeBase:
         """
         Embeds and adds documents to the collection.
         """
+        if not documents:
+            return
+
         embeddings = self._get_embeddings(documents)
         self.collection.add(
             documents=documents,
