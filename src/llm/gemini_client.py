@@ -41,6 +41,7 @@ class GeminiClient:
             CRITICAL TASK: You MUST identify localized symptoms (e.g. "leaf spot", "yellowing") and return "detected_objects".
             For each object, provide "box_2d" as [ymin, xmin, ymax, xmax] normalized to 1000 (e.g. [100, 200, 300, 400]).
             If you see symptoms, you MUST return at least one detected object.
+            LIMITATION: Return a MAXIMUM of 20 detected objects. If there are more, prioritize the largest or most severe ones.
             
             Return strictly JSON:
             {

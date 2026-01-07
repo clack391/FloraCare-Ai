@@ -1,0 +1,11 @@
+filename,expected_disease,expected_min_severity
+"Aphids, black fly (black bean aphids, blackfly).jpg",Aphids,4.0
+Blackspot Fungus.jpg,Blackspot,5.0
+Late Blight.jpg,Late Blight,5.0
+"Leaf Edge Burn (Environmental Stress).jpg",Leaf Edge Burn,3.0
+Pear Rust.jpg,Pear Rust,5.0
+Powdery Mildew.jpg,Powdery Mildew,5.0
+Sooty mold.jpg,Sooty Mold,4.0
+Stem rust.jpg,Stem Rust,5.0
+"Underwatering or Severe Dehydration.jpg",Underwatering,3.0
+"Watering Stress (Root Stress).jpg",Watering Stress,3.0

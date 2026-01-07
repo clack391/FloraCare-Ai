@@ -17,3 +17,6 @@ pypdf
 ruff
 mypy
 pytest
+pandas
+matplotlib
+seaborn
