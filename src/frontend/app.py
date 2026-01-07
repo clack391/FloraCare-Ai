@@ -9,6 +9,7 @@ import httpx
 from typing import Optional
 from src.frontend.components.voice import VoiceComponent
 from src.services.annotator import Annotator
+from src.services.voice import VoiceService
 from src.models.schemas import PlantImageAnalysis
 
 # --- Configuration ---
@@ -198,6 +199,15 @@ if 'diagnosis_result' in st.session_state and st.session_state.get('last_file') 
     with st.expander("📚 Knowledge Sources"):
         for ref in report['relevant_knowledge']:
             st.info(ref)
+            
+    # Read Diagnosis Button
+    if st.button("🔊 Read Full Diagnosis", key="read_diagnosis"):
+        with st.spinner("Generating audio..."):
+            # Construct narrative
+            narrative = f"Diagnosis: {report['diagnosis']}. Description: {report['analysis']['description']}. Treatment Plan: {'. '.join(report['treatment_plan'])}"
+            audio_bytes = VoiceService.text_to_audio(narrative)
+            if audio_bytes:
+                st.audio(audio_bytes, format='audio/mp3')
 
     # --- Chat Session (New) ---
     st.divider()
@@ -210,9 +220,15 @@ if 'diagnosis_result' in st.session_state and st.session_state.get('last_file') 
          st.session_state['last_chat_diagnosis_id'] = uploaded_file.name
 
     # Display History
-    for msg in st.session_state['chat_history']:
+    for idx, msg in enumerate(st.session_state['chat_history']):
         with st.chat_message(msg['role']):
             st.write(msg['content'])
+            # Add Read Button for Assistant messages
+            if msg['role'] == 'assistant':
+                if st.button("🔊", key=f"read_chat_{idx}"):
+                     audio = VoiceService.text_to_audio(msg['content'])
+                     if audio:
+                         st.audio(audio, format='audio/mp3')
 
     # Input
     if user_input := st.chat_input("Ask a follow-up question (e.g. 'How much water specifically?')"):

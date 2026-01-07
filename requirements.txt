@@ -1,4 +1,6 @@
 chromadb
+edge-tts
+nest_asyncio
 google-generativeai
 pydantic>=2.0
 fastapi
