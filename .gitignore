@@ -6,3 +6,5 @@
 test_images
 temp_uploads
 sample_knowledge.txt
+data
+.gitignore
