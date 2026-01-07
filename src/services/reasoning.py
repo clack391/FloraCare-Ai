@@ -31,8 +31,12 @@ async def analyze_plant(image_path: str):
              # predicted_disease = "Not a Plant"
              # trust_label = "LOW"
              pass
-        elif analysis.visual_symptoms:
-             # Take the first symptom as the primary disease prediction
+        if analysis.diagnosed_disease:
+             # Primary Check: Use the explicit diagnosis if available
+             predicted_disease = analysis.diagnosed_disease
+        
+        if predicted_disease == "Unknown" and analysis.visual_symptoms:
+             # Fallback: Take the first symptom as the primary disease prediction
              predicted_disease = analysis.visual_symptoms[0]
         
         return {

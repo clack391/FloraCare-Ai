@@ -13,6 +13,7 @@ class PlantImageAnalysis(BaseModel):
     severity_score: Optional[float] = Field(None, ge=1, le=10, description="Severity of the condition (1-10)")
     affected_area: Optional[str] = Field(None, description="Percentage of plant affected (e.g. '15%')")
     description: str = Field(..., description="Detailed visual description of the plant condition")
+    diagnosed_disease: Optional[str] = Field(None, description="The name of the disease/pest diagnosed")
     detected_objects: List[DetectedObject] = [] 
 
 class KnowledgeChunk(BaseModel):

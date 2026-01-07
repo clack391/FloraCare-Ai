@@ -46,6 +46,7 @@ class GeminiClient:
             Return strictly JSON:
             {
                 "plant_type": "str",
+                "diagnosed_disease": "str",
                 "visual_symptoms": ["str"],
                 "confidence": float,
                 "severity_score": float,
@@ -66,3 +67,36 @@ class GeminiClient:
         except Exception as e:
             # Wrap errors or log them
             raise RuntimeError(f"Gemini analysis failed: {e}")
+
+    def evaluate_prediction(self, expected: str, predicted: str, reasoning: str) -> bool:
+        """
+        Uses the LLM to judge if a predicted disease matches the expected disease,
+        considering synonyms and context.
+        """
+        prompt = f"""
+        You are an expert plant pathologist acting as a judge for an AI benchmark.
+        
+        Task: Determine if the PREDICTED diagnosis is correct given the EXPECTED diagnosis.
+        
+        Context:
+        - EXPECTED: "{expected}"
+        - PREDICTED: "{predicted}"
+        - REASONING: "{reasoning}"
+        
+        Rules:
+        1. Ignore minor spelling differences or capitalization.
+        2. Accept synonyms (e.g., "Edge Burn" == "Environmental Stress" if context implies it).
+        3. Accept if the expected disease is a specific type of the predicted category (e.g. "Pear Rust" is a type of "Rust").
+        4. Be strict about completely different diseases (e.g. "Blight" != "Rust").
+        
+        Question: Is the prediction CORRECT?
+        Return ONLY the JSON: {{"is_correct": boolean}}
+        """
+        
+        try:
+            response = self.model.generate_content(prompt)
+            result = json.loads(response.text)
+            return result.get("is_correct", False)
+        except Exception as e:
+            print(f"Evaluation failed: {e}")
+            return False

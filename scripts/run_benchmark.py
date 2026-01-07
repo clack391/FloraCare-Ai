@@ -84,27 +84,47 @@ async def run_benchmark(ground_truth_path: str, images_dir: str, dry_run: bool =
                 trust_label = "ERROR"
                 description = str(e)
 
-        # Smarter Compare
-        # Check if the expected disease is in the predicted disease OR the reasoning description
-        # We also convert to lower case for case-insensitivity
+        # Evaluation Logic
+        # 1. Fast Path: Exact Substring Match (Case-Insensitive)
+        expected_clean = expected_disease.lower().strip()
         predicted_lower = predicted_disease.lower()
-        description_lower = description.lower()
-        expected_lower = expected_disease.lower()
+        reasoning_lower = description.lower()
         
-        # Split expected into key terms (e.g. "Downy Mildew" -> ["downy", "mildew"])
-        # But for now, simple substring of the full phrase is a good start. 
-        # We can also check for singular singulars (removing 's').
-        expected_root = expected_lower.rstrip('s')
+        # Simple check: is expected disease string inside predicted string?
+        # Normalize spaces
+        expected_nospace = expected_clean.replace(" ", "")
+        predicted_nospace = predicted_lower.replace(" ", "")
         
-        # Robust check: remove spaces to handle "Blackspot" vs "Black Spot"
-        expected_clean = expected_root.replace(" ", "")
-        predicted_clean = predicted_lower.replace(" ", "")
-        description_clean = description_lower.replace(" ", "")
+        is_match = expected_clean in predicted_lower or expected_nospace in predicted_nospace
         
-        match_in_predicted = expected_clean in predicted_clean
-        match_in_reasoning = expected_clean in description_clean
+        is_correct = False # Initialize
         
-        is_correct = match_in_predicted or match_in_reasoning
+        if is_match:
+             # Fast path or fallback match
+             is_correct = True
+        else:
+             # LLM-as-a-Judge Fallback
+             # Since exact substring match failed, we ask Gemini if it's correct.
+             print(f"  Exact match failed ('{expected_clean}' not in '{predicted_lower}'). Asking Judge...")
+             # Check if we have a client instance available or need to create one
+             # Note: run_benchmark doesn't have the client instance passed in.
+             # We should probably instantiate it or pass it.
+             # For now, let's instantiate the GeminiClient here if not available.
+             
+             # Lazy import to avoid circular dependency issues if any
+             from src.llm.gemini_client import GeminiClient
+             judge_client = GeminiClient()
+             
+             is_correct = judge_client.evaluate_prediction(
+                 expected=expected_disease,
+                 predicted=predicted_disease,
+                 reasoning=description
+             )
+             
+             if is_correct:
+                 print(f"  Judge says: CORRECT (Validated by LLM)")
+             else:
+                 print(f"  Judge says: INCORRECT")
 
         if is_correct:
             correct_predictions += 1

@@ -114,7 +114,7 @@ if uploaded_file is not None:
                 }
                 
                 # Call Backend
-                with httpx.Client(timeout=60.0) as client:
+                with httpx.Client(timeout=300.0) as client:
                     response = client.post(f"{API_URL}/diagnose", files=files, data=data)
                     
                 if response.status_code == 200:
