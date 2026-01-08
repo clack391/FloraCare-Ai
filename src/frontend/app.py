@@ -13,6 +13,8 @@ from src.services.voice import VoiceService
 from src.services.pdf_generator import generate_pdf_report
 from src.models.schemas import PlantImageAnalysis
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
+import time
 
 # --- Configuration ---
 API_URL = os.getenv("API_URL", "http://localhost:8000")
@@ -59,6 +61,22 @@ def check_backend_status():
         return r.status_code == 200
     except:
         return False
+
+def call_backend_api(files, data):
+    """Blocking call to be run in a thread."""
+    with httpx.Client(timeout=300.0) as client:
+        response = client.post(f"{API_URL}/diagnose", files=files, data=data)
+        return response
+
+STATUS_STEPS = [
+    "Scanning leaf texture and discoloration...",
+    "Identifying plant species...",
+    "Analyzing visual symptoms (necrosis, chlorosis)...",
+    "Cross-referencing with Knowledge Base...",
+    "Fetching localized weather data...",
+    "Calculating confidence scores...",
+    "Generating treatment plan..."
+]
 
 # --- Sidebar ---
 st.sidebar.title("Settings ⚙️")
@@ -116,9 +134,26 @@ if uploaded_file is not None:
                     "user_query": final_query
                 }
                 
-                # Call Backend
-                with httpx.Client(timeout=300.0) as client:
-                    response = client.post(f"{API_URL}/diagnose", files=files, data=data)
+                # Call Backend with Dynamic Status
+                with st.status("🚀 Starting FloraCare Agent...", expanded=True) as status:
+                    with ThreadPoolExecutor() as executor:
+                        future = executor.submit(call_backend_api, files, data)
+                        
+                        step_index = 0
+                        while not future.done():
+                            # Cycle through updates
+                            msg = STATUS_STEPS[step_index % len(STATUS_STEPS)]
+                            status.update(label=msg, state="running")
+                            time.sleep(1.5)
+                            step_index += 1
+                        
+                        # Get Result
+                        response = future.result()
+                        
+                        if response.status_code == 200:
+                            status.update(label="✅ Diagnosis Complete!", state="complete", expanded=False)
+                        else:
+                            status.update(label="❌ Connection Failed", state="error")
                     
                 if response.status_code == 200:
                     report = response.json()
@@ -197,10 +232,18 @@ if 'diagnosis_result' in st.session_state and st.session_state.get('last_file') 
         for step in report['treatment_plan']:
             st.markdown(f"- {step}")
 
+    import re
     # Sources
     with st.expander("📚 Knowledge Sources"):
         for ref in report['relevant_knowledge']:
-            st.info(ref)
+            # Try to extract " (Source: ...)"
+            match = re.search(r"(.*) \(Source: (.*)\)$", ref)
+            if match:
+                content, source_name = match.groups()
+                st.markdown(f"**Source: {source_name}**")
+                st.info(content)
+            else:
+                st.info(ref)
             
     # Read Diagnosis Button
     if st.button("🔊 Read Full Diagnosis", key="read_diagnosis"):

@@ -110,7 +110,7 @@ class RAGPipeline:
         2. COMPARE them. One source might be more accurate or relevant than another for this specific visual case.
         3. If sources conflict (e.g. Source A says 'Rust', Source B says 'Blight'), prioritize the source whose description BEST matches the "Patient Plant Analysis" symptoms.
         4. If a chunk is NOT relevant (discusses wrong plant/disease), IGNORE IT.
-        5. In "relevant_knowledge", cite ONLY the snippets that contributed to your final, best-judged diagnosis.
+        5. In "relevant_knowledge", include valid snippets. IMPORTANT: You MUST append the source to every item, e.g. "Fungal spots... (Source: guidelines.pdf)".
         6. If all sources are irrelevant, leave "relevant_knowledge" empty and rely on visual analysis.
 
         
