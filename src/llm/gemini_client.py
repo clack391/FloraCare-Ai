@@ -43,7 +43,8 @@ class GeminiClient:
             If you see symptoms, you MUST return at least one detected object.
             LIMITATION: Return a MAXIMUM of 20 detected objects. If there are more, prioritize the largest or most severe ones.
             
-            Return strictly JSON:
+            Return strictly JSON. Ensure all keys and string values are double-quoted. Escape any quotes within strings. 
+            Ensure there are commas between all fields.
             {
                 "plant_type": "str",
                 "diagnosed_disease": "str",
@@ -61,12 +62,24 @@ class GeminiClient:
             response = self.model.generate_content([sample_file, prompt])
             
             # Parse the JSON response
-            response_json = json.loads(response.text)
+            cleaned_text = self._clean_json_response(response.text)
+            response_json = json.loads(cleaned_text)
             return PlantImageAnalysis(**response_json)
             
         except Exception as e:
             # Wrap errors or log them
             raise RuntimeError(f"Gemini analysis failed: {e}")
+
+    def _clean_json_response(self, text: str) -> str:
+        """Removes markdown code blocks if present."""
+        text = text.strip()
+        if text.startswith("```json"):
+            text = text[7:]
+        elif text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+        return text.strip()
 
     def evaluate_prediction(self, expected: str, predicted: str, reasoning: str) -> bool:
         """
@@ -95,7 +108,8 @@ class GeminiClient:
         
         try:
             response = self.model.generate_content(prompt)
-            result = json.loads(response.text)
+            cleaned_text = self._clean_json_response(response.text)
+            result = json.loads(cleaned_text)
             return result.get("is_correct", False)
         except Exception as e:
             print(f"Evaluation failed: {e}")
