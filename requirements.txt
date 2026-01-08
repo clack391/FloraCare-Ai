@@ -1,5 +1,6 @@
 chromadb
 edge-tts
+fpdf
 nest_asyncio
 google-generativeai
 pydantic>=2.0
@@ -22,3 +23,9 @@ pytest
 pandas
 matplotlib
 seaborn
+requests
+langchain
+langchain-google-genai
+langgraph
+
+

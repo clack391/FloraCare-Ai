@@ -10,7 +10,9 @@ from typing import Optional
 from src.frontend.components.voice import VoiceComponent
 from src.services.annotator import Annotator
 from src.services.voice import VoiceService
+from src.services.pdf_generator import generate_pdf_report
 from src.models.schemas import PlantImageAnalysis
+import tempfile
 
 # --- Configuration ---
 API_URL = os.getenv("API_URL", "http://localhost:8000")
@@ -208,6 +210,63 @@ if 'diagnosis_result' in st.session_state and st.session_state.get('last_file') 
             audio_bytes = VoiceService.text_to_audio(narrative)
             if audio_bytes:
                 st.audio(audio_bytes, format='audio/mp3')
+                
+    st.divider()
+    
+    # Download Report Button
+    # Prepare data
+    conf = report['analysis'].get('confidence', 0.0)
+    # Simple logic for trust label to match report style
+    if conf > 0.85:
+        t_label = "HIGH"
+    elif conf > 0.60:
+        t_label = "MEDIUM"
+    else:
+        t_label = "LOW"
+        
+
+    # Optimized Download Flow:
+    # Since generating PDF might be fast, let's pre-generate or generate on click if we can.
+    # Actually, st.download_button needs the data.
+    # Let's simple create a "Prepare Download" button or just do it.
+    # Given it uses fpdf, it's fast. Let's try to generate it ONLY when users asks, 
+    # BUT st.download_button requires the file object.
+    
+    # Alternative: Put the generation inside the button logic? No, download_button IS the trigger.
+    # Let's do this:
+    # We will generate the PDF *automatically* when the report is shown, so the button is ready.
+    # It's local and fast.
+    
+    file_ext = uploaded_file.type.split('/')[-1]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_ext}") as tmp_img:
+        tmp_img.write(uploaded_file.getvalue())
+        tmp_img_path = tmp_img.name
+    
+    
+    try:
+        # Prepare data for new PDF function
+        diagnosis_data = {
+            "disease_name": report['diagnosis'],
+            "confidence_score": f"{conf * 100:.1f}%",
+            "trust_label": t_label,
+            "weather_context": f"{report.get('weather_context', {}).get('condition', 'N/A')}, {report.get('weather_context', {}).get('temperature', 'N/A')}°C, {report.get('weather_context', {}).get('humidity', 'N/A')}% Humidity" if report.get('weather_context') else None,
+            "visual_symptoms": report['analysis']['visual_symptoms'],
+            "analysis": report['analysis']['description'],
+            "treatment_plan": report['treatment_plan']
+        }
+        
+        pdf_path = generate_pdf_report(tmp_img_path, diagnosis_data)
+        with open(pdf_path, "rb") as pdf_file:
+            pdf_bytes = pdf_file.read()
+            
+        st.download_button(
+            label="📄 Download Official Report",
+            data=pdf_bytes,
+            file_name="FloraCare_Report.pdf",
+            mime="application/pdf"
+        )
+    except Exception as e:
+        st.error(f"PDF Generation Error: {e}")
 
     # --- Chat Session (New) ---
     st.divider()
