@@ -17,7 +17,18 @@ async def lifespan(app: FastAPI):
     # Shutdown: Clean temp if needed
     pass
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="FloraCare AI API", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # --- Init Components (Global for now for persistent caching if needed) ---
 # In a real app we might use Dependency Injection, but for MVP this is fine.
