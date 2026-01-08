@@ -6,7 +6,6 @@ import uuid
 from typing import List
 
 from src.models.schemas import DiagnosisReport, ChatRequest, ChatResponse
-from src.rag.pipeline import RAGPipeline
 
 # --- Lifecycle & App ---
 
@@ -30,6 +29,7 @@ def get_pipeline():
     global pipeline_instance
     if pipeline_instance is None:
         print("Initializing Global RAG Pipeline...")
+        from src.rag.pipeline import RAGPipeline
         p = RAGPipeline()
         pipeline_instance = p.build_graph()
     return pipeline_instance
