@@ -6,6 +6,7 @@ import uuid
 from typing import List
 
 from src.models.schemas import DiagnosisReport, ChatRequest, ChatResponse
+from src.services.vision_enhancer import enhance_image_for_ai
 
 # --- Lifecycle & App ---
 
@@ -52,20 +53,27 @@ def health_check():
     return {"status": "ok", "service": "FloraCare AI"}
 
 @app.post("/diagnose", response_model=DiagnosisReport)
-@app.post("/diagnose", response_model=DiagnosisReport)
 async def diagnose_plant(
     file: UploadFile = File(...),
     location: str = Form("London,UK"),
     user_query: str = Form(None)
 ):
     try:
-        # 1. Save File to Disk (Temp)
+        # 1. Save File to Disk (Temp) - WITH ENHANCEMENT
         file_ext = file.filename.split('.')[-1]
         unique_name = f"{uuid.uuid4()}.{file_ext}"
         temp_path = os.path.join("temp_uploads", unique_name)
         
+        # Read and Enhance
+        raw_bytes = await file.read()
+        try:
+            enhanced_bytes = enhance_image_for_ai(raw_bytes)
+        except Exception as e:
+            print(f"Enhancement failed, using raw image: {e}")
+            enhanced_bytes = raw_bytes
+
         with open(temp_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(enhanced_bytes)
             
         # 2. Invoke Pipeline
         workflow = get_pipeline()

@@ -12,6 +12,7 @@ httpx
 python-multipart
 streamlit
 Pillow
+opencv-python-headless
 openai-whisper
 soundfile
 numpy

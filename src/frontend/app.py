@@ -121,62 +121,62 @@ uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png
 if uploaded_file is not None:
     # Display Original Image if no analysis yet, otherwise we might show annotated
     if 'diagnosis_result' not in st.session_state or st.session_state.get('last_file') != uploaded_file.name:
-        st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
+        st.image(uploaded_file, caption="Uploaded Image", width="stretch")
     
     # Analyze Button
     if st.button("Analyze Plant 🔍", type="primary"):
-        with st.spinner("Analyzing visual symptoms, fetching weather, and checking knowledge base..."):
-            try:
-                # Prepare Request
-                files = {"file": (uploaded_file.name, uploaded_file, uploaded_file.type)}
-                data = {
-                    "location": location,
-                    "user_query": final_query
-                }
+        # Removed redundant st.spinner
+        try:
+            # Prepare Request
+            files = {"file": (uploaded_file.name, uploaded_file, uploaded_file.type)}
+            data = {
+                "location": location,
+                "user_query": final_query
+            }
+            
+            # Call Backend with Dynamic Status
+            with st.status("🚀 Starting FloraCare Agent...", expanded=True) as status:
+                with ThreadPoolExecutor() as executor:
+                    future = executor.submit(call_backend_api, files, data)
+                    
+                    step_index = 0
+                    while not future.done():
+                        # Cycle through updates
+                        msg = STATUS_STEPS[step_index % len(STATUS_STEPS)]
+                        status.update(label=msg, state="running")
+                        time.sleep(1.5)
+                        step_index += 1
+                    
+                    # Get Result
+                    response = future.result()
+                    
+                    if response.status_code == 200:
+                        status.update(label="✅ Diagnosis Complete!", state="complete", expanded=False)
+                    else:
+                        status.update(label="❌ Connection Failed", state="error")
                 
-                # Call Backend with Dynamic Status
-                with st.status("🚀 Starting FloraCare Agent...", expanded=True) as status:
-                    with ThreadPoolExecutor() as executor:
-                        future = executor.submit(call_backend_api, files, data)
-                        
-                        step_index = 0
-                        while not future.done():
-                            # Cycle through updates
-                            msg = STATUS_STEPS[step_index % len(STATUS_STEPS)]
-                            status.update(label=msg, state="running")
-                            time.sleep(1.5)
-                            step_index += 1
-                        
-                        # Get Result
-                        response = future.result()
-                        
-                        if response.status_code == 200:
-                            status.update(label="✅ Diagnosis Complete!", state="complete", expanded=False)
-                        else:
-                            status.update(label="❌ Connection Failed", state="error")
-                    
-                if response.status_code == 200:
-                    report = response.json()
-                    st.session_state['diagnosis_result'] = report
-                    st.session_state['last_file'] = uploaded_file.name
-                    
-                    # --- Process Annotation ---
-                    try:
-                        analysis_obj = PlantImageAnalysis(**report['analysis'])
-                        annotated_bytes = Annotator.draw_boxes(uploaded_file.getvalue(), analysis_obj)
-                        st.session_state['annotated_image'] = annotated_bytes
-                    except Exception as e:
-                        print(f"Annotation error: {e}")
-                        st.session_state['annotated_image'] = uploaded_file.getvalue()
-                    
+            if response.status_code == 200:
+                report = response.json()
+                st.session_state['diagnosis_result'] = report
+                st.session_state['last_file'] = uploaded_file.name
+                
+                # --- Process Annotation ---
+                try:
+                    analysis_obj = PlantImageAnalysis(**report['analysis'])
+                    annotated_bytes = Annotator.draw_boxes(uploaded_file.getvalue(), analysis_obj)
+                    st.session_state['annotated_image'] = annotated_bytes
+                except Exception as e:
+                    print(f"Annotation error: {e}")
+                    st.session_state['annotated_image'] = uploaded_file.getvalue()
+                
 
-                else:
-                    st.error(f"Error {response.status_code}: {response.text}")
+            else:
+                st.error(f"Error {response.status_code}: {response.text}")
 
-            except httpx.ConnectError:
-                st.error("Cannot connect to Backend API. Is it running? (http://localhost:8000)")
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
+        except httpx.ConnectError:
+            st.error("Cannot connect to Backend API. Is it running? (http://localhost:8000)")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
 
 # --- Render Results (Persistent) ---
 if 'diagnosis_result' in st.session_state and st.session_state.get('last_file') == (uploaded_file.name if uploaded_file else ""):
@@ -191,7 +191,7 @@ if 'diagnosis_result' in st.session_state and st.session_state.get('last_file') 
     with r_col1:
         st.subheader("Visual Findings")
         if 'annotated_image' in st.session_state:
-            st.image(st.session_state['annotated_image'], caption="Detected Symptoms (Annotated)", use_container_width=True)
+            st.image(st.session_state['annotated_image'], caption="Detected Symptoms (Annotated)", width="stretch")
         
         with st.expander("Detailed Description"):
             st.write(report['analysis']['description'])

@@ -49,7 +49,7 @@ class RAGPipeline:
     def retrieve_node(self, state: DiagnosisState):
         print("--- Node: Retrieve Knowledge ---")
         analysis: PlantImageAnalysis = state['analysis']
-        query = f"{analysis.plant_type} with {', '.join(analysis.visual_symptoms)}"
+        query = f"{analysis.plant_type} with {', '.join(sorted(analysis.visual_symptoms))}"
         # Optimized: Fetch 5 candidates to allow comparison between multiple sources
         context = self.kb.query(query, n_results=5)
         return {"retrieved_context": context}
@@ -111,7 +111,8 @@ class RAGPipeline:
         3. If sources conflict (e.g. Source A says 'Rust', Source B says 'Blight'), prioritize the source whose description BEST matches the "Patient Plant Analysis" symptoms.
         4. If a chunk is NOT relevant (discusses wrong plant/disease), IGNORE IT.
         5. In "relevant_knowledge", include valid snippets. IMPORTANT: You MUST append the source to every item, e.g. "Fungal spots... (Source: guidelines.pdf)".
-        6. If all sources are irrelevant, leave "relevant_knowledge" empty and rely on visual analysis.
+        6. If strict symptom matches are NOT found, you MAY include general identification or care advice for this plant type from the sources. Do not leave "relevant_knowledge" empty unless the sources are completely unrelated (e.g. wrong plant).
+        7. SPECIAL CASE: If the plant is HEALTHY, strictly select sources that contain "Care Tips", "Best Practices", or "Cultivation Guides" for this species. Do not ignore them.
 
         
         Return the response strictly as JSON matching the Schema:

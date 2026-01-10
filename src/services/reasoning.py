@@ -1,5 +1,8 @@
 from src.llm.gemini_client import GeminiClient
 import os
+import io
+import PIL.Image
+from src.services.vision_enhancer import enhance_image_for_ai
 
 async def analyze_plant(image_path: str):
     """
@@ -14,7 +17,20 @@ async def analyze_plant(image_path: str):
         # If GeminiClient.analyze_image is blocking, it will block the event loop, 
         # but for a benchmark script running sequentially, this is acceptable.
         
-        analysis = client.analyze_image(image_path)
+        # 1. Read File Bytes
+        with open(image_path, "rb") as f:
+            raw_bytes = f.read()
+            
+        # 2. Enhance
+        try:
+             enhanced_bytes = enhance_image_for_ai(raw_bytes)
+             # Convert back to PIL for client
+             img = PIL.Image.open(io.BytesIO(enhanced_bytes))
+        except Exception as e:
+             print(f"Benchmark Enhancement failed: {e}")
+             img = PIL.Image.open(image_path)
+
+        analysis = client.analyze_image(img)
         
         # Deterministic Scoring Logic
         # 1. Trust Label

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from src.core.config import settings
 from src.models.schemas import PlantImageAnalysis
+import PIL.Image
 
 # Configure the SDK
 if settings.GOOGLE_API_KEY:
@@ -16,13 +17,19 @@ class GeminiClient:
             generation_config={"response_mime_type": "application/json", "temperature": 0.0}
         )
 
-    def analyze_image(self, image_path: str) -> PlantImageAnalysis:
+    def analyze_image(self, image_input) -> PlantImageAnalysis:
         """
         Analyzes an image using Gemini Vision capabilities and returns structured data.
+        image_input: Can be a file path (str) or a PIL.Image object.
         """
-        path = Path(image_path)
-        if not path.exists():
-            raise FileNotFoundError(f"Image not found at {image_path}")
+        if isinstance(image_input, str):
+            path = Path(image_input)
+            if not path.exists():
+                raise FileNotFoundError(f"Image not found at {image_input}")
+            img = PIL.Image.open(path)
+        else:
+            # Assume it's a PIL Image
+            img = image_input
 
         # Upload the file to Gemini
         # Note: For production, we might want to handle file cleanup or use inline data if small.
@@ -30,7 +37,6 @@ class GeminiClient:
         # But 'upload_file' is the standard way for the File API.
         
         try:
-            sample_file = genai.upload_file(path=path, display_name="Plant Image")
             
             prompt = """
             Analyze this plant image. Identify the plant type, "visual_symptoms" (list of strings), 
@@ -59,7 +65,10 @@ class GeminiClient:
             }
             """
 
-            response = self.model.generate_content([sample_file, prompt])
+            response = self.model.generate_content(
+                [img, prompt],
+                generation_config={"response_mime_type": "application/json", "temperature": 0.0}
+            )
             
             # Parse the JSON response
             cleaned_text = self._clean_json_response(response.text)
