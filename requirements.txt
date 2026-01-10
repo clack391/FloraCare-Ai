@@ -17,7 +17,7 @@ openai-whisper
 soundfile
 numpy
 pypdf
-# Dev dependencies
+# Dev dependenciesss
 ruff
 mypy
 pytest
