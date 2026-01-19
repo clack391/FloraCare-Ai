@@ -50,8 +50,8 @@ class RAGPipeline:
         print("--- Node: Retrieve Knowledge ---")
         analysis: PlantImageAnalysis = state['analysis']
         query = f"{analysis.plant_type} with {', '.join(sorted(analysis.visual_symptoms))}"
-        # Optimized: Fetch 5 candidates to allow comparison between multiple sources
-        context = self.kb.query(query, n_results=5)
+        # Optimized: Fetch 10 candidates to increase chance of finding general care info if disease match fails
+        context = self.kb.query(query, n_results=10)
         return {"retrieved_context": context}
 
     def diagnose_node(self, state: DiagnosisState):
@@ -113,6 +113,10 @@ class RAGPipeline:
         5. In "relevant_knowledge", include valid snippets. IMPORTANT: You MUST append the source to every item, e.g. "Fungal spots... (Source: guidelines.pdf)".
         6. If strict symptom matches are NOT found, you MAY include general identification or care advice for this plant type from the sources. Do not leave "relevant_knowledge" empty unless the sources are completely unrelated (e.g. wrong plant).
         7. SPECIAL CASE: If the plant is HEALTHY, strictly select sources that contain "Care Tips", "Best Practices", or "Cultivation Guides" for this species. Do not ignore them.
+        8. CLINICAL CAUTION: "Root Rot" and "Severe Dehydration" often look identical (wilting, drooping).
+           - If diagnosing "Dehydration/Underwatering", specificially CHECK if "Root Rot" is a possible alternative cause given the visuals (e.g. soil looks wet but plant wilts, or history of overwatering).
+           - In "treatment_plan", IF ambiguity exists, MUST advise: "Check roots: Firm/White = Thirsty; Mushy/Brown = Root Rot" to confirm.
+        9. FALLBACK: If NO specific disease/pest sources are found, you MUST select sources that describe the identified plant species (e.g. "Dieffenbachia Care") and list them. Do not return an empty list if general care info is present.
 
         
         Return the response strictly as JSON matching the Schema:

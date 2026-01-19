@@ -27,8 +27,24 @@ class Annotator:
                     right = (xmax / 1000) * width
                     bottom = (ymax / 1000) * height
                     
+                    # Robustness: Ensure x0 < x1 and y0 < y1
+                    real_left = min(left, right)
+                    real_right = max(left, right)
+                    real_top = min(top, bottom)
+                    real_bottom = max(top, bottom)
+                    
+                    # Clamp to image bounds
+                    real_left = max(0, min(width, real_left))
+                    real_right = max(0, min(width, real_right))
+                    real_top = max(0, min(height, real_top))
+                    real_bottom = max(0, min(height, real_bottom))
+
+                    # Skip invalid boxes (e.g. 0 width/height)
+                    if real_right <= real_left or real_bottom <= real_top:
+                        continue
+                    
                     # Draw Box
-                    draw.rectangle([left, top, right, bottom], outline="red", width=3)
+                    draw.rectangle([real_left, real_top, real_right, real_bottom], outline="red", width=3)
                     
                     # Draw Label (Optional background for readability)
                     # draw.text((left, top - 10), obj.name, fill="red") # simple text
