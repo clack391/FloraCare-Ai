@@ -1,0 +1,31 @@
+# Ignore virtual environment
+.venv
+venv
+ENV
+
+# Ignore git
+.git
+.gitignore
+
+# Ignore cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Ignore data/temp
+temp_uploads
+test_images
+*.sqlite3
+*.db
+data
+# Keep chroma_db for pre-ingested data
+!chroma_db
+tests
+docs
+*.md
+LICENSE
